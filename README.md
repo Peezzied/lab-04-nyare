@@ -1,6 +1,7 @@
-# 'NYARE - AI Class Journal & Study Planner
+# Lab 04 - 'Nyare
 
 ![preview_screenshot.png](preview_screenshot.png)
+
 This is a console-based project acting as a partial proof-of-concept of our proposed project. It demonstrates Java file-handling for text IO (using CSV for task management) and binary IO (using DAT for system settings), contextualized to our proposed project.
 
 ## Quick Start (Windows)
