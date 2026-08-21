@@ -61,6 +61,9 @@ public class Main {
         }
     }
 
+    /**
+     * Clears both the terminal viewport and the scrollback buffer history.
+     */
     private static void clearScreen() {
         // \033[H moves cursor to top-left
         // \033[2J clears the viewport
@@ -69,6 +72,11 @@ public class Main {
         System.out.flush();
     }
 
+    /**
+     * Clears the viewport and prints a centered header title bordered with Unicode lines.
+     *
+     * @param title the title to print in the header frame
+     */
     private static void printHeader(String title) {
         clearScreen();
         System.out.println(" " + "─".repeat(HEADER_WIDTH));
@@ -78,6 +86,9 @@ public class Main {
         System.out.println(" " + "─".repeat(HEADER_WIDTH));
     }
 
+    /**
+     * Clears the viewport and prints the main menu system containing the ASCII banner and options.
+     */
     private static void printMainMenu() {
         clearScreen();
         System.out.println("\n");
@@ -134,6 +145,13 @@ public class Main {
         displayTaskTable("TODAY'S TASKS LIST", todayTasks);
     }
 
+    /**
+     * Spawns the interactive task list viewer. Handles page layout, scroll rendering
+     * on Enter key presses, query search updates, and detailed task card navigation.
+     *
+     * @param titleLabel the title to display in the header frame
+     * @param baseList   the list of tasks to render and scroll through
+     */
     private static void displayTaskTable(String titleLabel, List<AcademicTask> baseList) {
         String filterQuery = "None";
         List<AcademicTask> currentList = new ArrayList<>(baseList);
@@ -244,6 +262,13 @@ public class Main {
         System.out.println(" " + COLOR_MUTED + "─".repeat(TABLE_WIDTH) + COLOR_RESET);
     }
 
+    /**
+     * Prints the initial chunk of tasks (up to a limit of 10) to the console.
+     * The last item is printed using 'print' to keep the cursor positioned for scrolling.
+     *
+     * @param currentList the list of tasks to render
+     * @return the index of the last task printed, or -1 if the list was empty
+     */
     private static int printInitialTasks(List<AcademicTask> currentList) {
         if (currentList.isEmpty()) {
             System.out.println("  " + COLOR_RED + "No results found." + COLOR_RESET);
@@ -287,6 +312,10 @@ public class Main {
         return String.format("  %s   %s   %s   %s   %s   %s", idStr, subj, title, typeStr, dueStr, statusStr);
     }
 
+    /**
+     * Implements Menu Option 2: Synthesizes a 2-week study plan from student notes.
+     * Evaluates task notes due in the next 14 days and triggers redirection.
+     */
     private static void generateStudyPlan() {
         printHeader("GENERATE STUDY PLAN FROM NOTES");
         System.out.println("  Generating Study Plan...");
@@ -325,6 +354,10 @@ public class Main {
         displayTwoWeekTasks();
     }
 
+    /**
+     * Implements Menu Option 4: Performs a manual save of tasks and system metadata.
+     * Recalculates stats and updates configuration details.
+     */
     private static void manualSave() {
         printHeader("MANUAL SAVE");
         System.out.println("  Saving system configuration...");
@@ -362,6 +395,10 @@ public class Main {
         System.out.print(COLOR_RESET);
     }
 
+    /**
+     * Implements Menu Option 5: Displays system diagnostics, platform environments,
+     * and metadata properties.
+     */
     private static void showAbout() {
         var systemData = SYSTEM_STORE.getSystemData();
         printHeader("ABOUT");
@@ -389,6 +426,11 @@ public class Main {
         System.out.print(COLOR_RESET);
     }
 
+    /**
+     * Implements Menu Option 6: Prompts exit verification before stopping execution.
+     *
+     * @return true if the user confirms exit, false otherwise
+     */
     private static boolean exitProgram() {
         printHeader("EXIT PROGRAM");
         System.out.print(" " + COLOR_BOLD + COLOR_ACCENT + "> Are you sure you want to exit? (y/n): " + COLOR_RESET + "\u001B[97m");
@@ -423,6 +465,12 @@ public class Main {
         return s;
     }
 
+    /**
+     * Clears the viewport and renders a detailed card layout for a selected AcademicTask,
+     * fully outputting its formatted details and notes before prompting return.
+     *
+     * @param t the AcademicTask record to display
+     */
     private static void displayTaskDetailsCard(AcademicTask t) {
         clearScreen();
         printHeader("TASK DETAILS");
@@ -443,6 +491,11 @@ public class Main {
         System.out.print(COLOR_RESET);
     }
    
+    /**
+     * Helper that splits a notes block by spaces and prints it fully wrapped to a 70-character limit.
+     *
+     * @param text the notes text block to wrap
+     */
     private static void printWrappedText(String text) {
         if (text == null || text.isEmpty()) {
             System.out.println("   " + "(None)");

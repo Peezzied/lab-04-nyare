@@ -9,25 +9,43 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Service class that manages loading, updating, and saving system-level configurations and data.
+ * This class persists system states to a binary DAT file format.
+ */
 public class SystemStore {
 
     private static final String FILE_NAME = "system.dat";
     private SystemData systemData;
     private final TaskStore taskStore;
 
-    // inject taskstore
+    /**
+     * Constructs a new SystemStore and injects the active TaskStore repository.
+     *
+     * @param taskStore the TaskStore instance mapping the task list database
+     */
     public SystemStore(TaskStore taskStore) {
         this.taskStore = taskStore;
     }
 
+    /**
+     * Gets the system configuration details currently loaded in memory.
+     *
+     * @return the SystemData configuration instance
+     */
     public SystemData getSystemData() {
         return systemData;
     }
 
+    /**
+     * Updates diagnostics state and saves the SystemData to the system.dat file using binary streams.
+     */
     public void saveSystemData() {
         updateStatefulSystemData();
         String formattedDate = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("MMMM dd, yyyy hh:mm a"));
+                .format(DateTimeFormatter.ofPattern("MMMM dd, yyyy hh:mm a"))
+                .replace("AM", "am")
+                .replace("PM", "pm");
         systemData.setLastSavedDate(formattedDate);
 
         try (DataOutputStream out = new DataOutputStream(new FileOutputStream(FILE_NAME))) {
@@ -43,6 +61,9 @@ public class SystemStore {
         }
     }
 
+    /**
+     * Recalculates stats such as today's active tasks and the last task ID from the live TaskStore.
+     */
     private void updateStatefulSystemData() {
         List<AcademicTask> tasks = taskStore.getTasks();
         long activeCount = tasks.stream()
@@ -55,15 +76,16 @@ public class SystemStore {
         systemData.setActiveTasksCount((int) activeCount);
     }
 
-    // Loads the SystemData object from system.dat.
-    // If the file does not exist yet (first launch), returns default data instead.
+    /**
+     * Loads the SystemData object from system.dat. If the file is missing or corrupted,
+     * it initializes the system with default data configurations.
+     */
     public void loadSystemData() {
         File file = new File(FILE_NAME);
 
         if (!file.exists()) {
             this.systemData = createDefault();
             updateStatefulSystemData();
-            saveSystemData();
         }
 
         try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
@@ -90,7 +112,9 @@ public class SystemStore {
         }
     }
 
-    // Default system-level data used on first launch or if system.dat is missing/corrupted.
+    /**
+     * Builds default system configurations when launching for the first time.
+     */
     private static SystemData createDefault() {
         return new SystemData(
                 0L,

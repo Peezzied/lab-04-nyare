@@ -8,6 +8,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service class that acts as the repository and persistence layer for AcademicTasks.
+ * This class handles storing task items in memory and saving/loading them to a text CSV file.
+ */
 public class TaskStore {
 
     private final List<AcademicTask> AcademicTasks = new ArrayList<>();
@@ -18,6 +22,17 @@ public class TaskStore {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
+    /**
+     * Default constructor for TaskStore.
+     */
+    public TaskStore() {
+    }
+
+    /**
+     * Gets the mock seed dataset of 25 tasks for the initial proof-of-concept.
+     *
+     * @return the list of 25 seeded AcademicTask objects
+     */
     public static List<AcademicTask> getDummyData() {
         List<AcademicTask> list = new ArrayList<>();
 
@@ -125,27 +140,37 @@ public class TaskStore {
         return list;
     }
 
-//     ---------------------------------------------------------------
-//     Accessors for other components (e.g. data model / UI) to use.
-//     ---------------------------------------------------------------
-
+    /**
+     * Gets the full list of AcademicTasks managed by this store.
+     *
+     * @return the list of academic tasks
+     */
     public List<AcademicTask> getTasks() {
         return AcademicTasks;
     }
 
+    /**
+     * Adds a single AcademicTask to the memory repository.
+     *
+     * @param task the AcademicTask object to append
+     */
     public void addTask(AcademicTask task) {
         AcademicTasks.add(task);
     }
 
+    /**
+     * Replaces the entire local repository list with the provided set of tasks.
+     *
+     * @param tasks the new list of academic tasks to set
+     */
     public void setTasks(List<AcademicTask> tasks) {
         AcademicTasks.clear();
         AcademicTasks.addAll(tasks);
     }
 
-    // ---------------------------------------------------------------
-    // Persistence: text/CSV via character streams
-    // ---------------------------------------------------------------
-
+    /**
+     * Persists the current AcademicTasks memory list to the file path in CSV format.
+     */
     public void saveTasks() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH))) {
             writer.write(HEADER);
@@ -160,12 +185,13 @@ public class TaskStore {
         }
     }
 
-
-
+    /**
+     * Loads the AcademicTasks list from the local CSV file.
+     * If the file is missing, the load ends silently.
+     */
     public void loadTasks() {
         java.io.File file = new java.io.File(FILE_PATH);
         if (!file.exists()) {
-            // First launch / no saved data yet — nothing to load.
             return;
         }
 
@@ -195,10 +221,9 @@ public class TaskStore {
         }
     }
 
-    // ---------------------------------------------------------------
-    // CSV row conversion helpers
-    // ---------------------------------------------------------------
-
+    /**
+     * Formats an AcademicTask object into a CSV row string.
+     */
     private static String toCsvRow(AcademicTask task) {
         return String.join(",",
                 String.valueOf(task.getId()),
@@ -212,6 +237,9 @@ public class TaskStore {
         );
     }
 
+    /**
+     * Parses a CSV row string into a loaded AcademicTask instance.
+     */
     private static AcademicTask fromCsvRow(String line) {
         List<String> fields = parseCsvLine(line);
 
@@ -238,8 +266,9 @@ public class TaskStore {
         }
     }
 
-    // Wraps a field in double quotes and escapes embedded quotes,
-    // only when needed (field contains comma, quote, or newline).
+    /**
+     * Escapes quote symbols and commas in text fields before writing to CSV.
+     */
     private static String escape(String field) {
         if (field == null) {
             return "";
@@ -250,8 +279,9 @@ public class TaskStore {
         return field;
     }
 
-    // Manual CSV parser that respects quoted fields (so commas/quotes
-    // inside "notes" don't break column alignment).
+    /**
+     * Manually parses a CSV row block, respecting double-quoted values.
+     */
     private static List<String> parseCsvLine(String line) {
         List<String> fields = new ArrayList<>();
         StringBuilder current = new StringBuilder();
