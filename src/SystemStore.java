@@ -17,7 +17,10 @@ public class SystemStore {
     // inject taskstore
     public SystemStore(TaskStore taskStore) {
         this.taskStore = taskStore;
-        loadSystemData();
+    }
+
+    public SystemData getSystemData() {
+        return systemData;
     }
 
     public void saveSystemData() {
@@ -55,9 +58,8 @@ public class SystemStore {
         File file = new File(FILE_NAME);
 
         if (!file.exists()) {
-            var systemData = createDefault();
+            this.systemData = createDefault();
             updateStatefulSystemData();
-            this.systemData = systemData;
         }
 
         try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
