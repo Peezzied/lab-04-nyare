@@ -8,7 +8,7 @@ cd /d "%~dp0"
 :: Compile Java source files
 echo Compiling source files...
 if not exist out mkdir out
-javac -d out src\Main.java src\AcademicTask.java src\TaskStatus.java src\TaskType.java src\SystemData.java
+javac -d out src\*.java
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Compilation failed!

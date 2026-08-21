@@ -9,7 +9,7 @@ Double-click `run.bat` to compile and run the application with full UTF-8 suppor
 
 ## Manual Execution
 ```bash
-javac -d out src/Main.java src/AcademicTask.java src/TaskStatus.java src/TaskType.java src/SystemData.java
+javac -d out src/*.java
 java -cp out Main
 ```
 ---
