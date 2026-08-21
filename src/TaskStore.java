@@ -10,7 +10,7 @@ import java.util.List;
 
 public class TaskStore {
 
-    private static final List<AcademicTask> AcademicTasks = new ArrayList<>();
+    private final List<AcademicTask> AcademicTasks = new ArrayList<>();
 
     private static final String FILE_PATH = "academic_tasks.csv";
 
@@ -22,15 +22,15 @@ public class TaskStore {
 //     Accessors for other components (e.g. data model / UI) to use.
 //     ---------------------------------------------------------------
 
-    public static List<AcademicTask> getTasks() {
+    public List<AcademicTask> getTasks() {
         return AcademicTasks;
     }
 
-    public static void addTask(AcademicTask task) {
+    public void addTask(AcademicTask task) {
         AcademicTasks.add(task);
     }
 
-    public static void setTasks(List<AcademicTask> tasks) {
+    public void setTasks(List<AcademicTask> tasks) {
         AcademicTasks.clear();
         AcademicTasks.addAll(tasks);
     }
@@ -39,7 +39,7 @@ public class TaskStore {
     // Persistence: text/CSV via character streams
     // ---------------------------------------------------------------
 
-    public static void saveTasks() {
+    public void saveTasks() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH))) {
             writer.write(HEADER);
             writer.newLine();
@@ -55,7 +55,7 @@ public class TaskStore {
 
 
 
-    public static void loadTasks() {
+    public void loadTasks() {
         java.io.File file = new java.io.File(FILE_PATH);
         if (!file.exists()) {
             // First launch / no saved data yet — nothing to load.

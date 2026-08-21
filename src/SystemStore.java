@@ -4,42 +4,60 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class SystemStore {
 
     private static final String FILE_NAME = "system.dat";
+    private SystemData systemData;
+    private final TaskStore taskStore;
 
-    // Saves the current SystemData object into system.dat using binary streams.
-    // Called on Manual Save (menu 4) and on Exit (menu 6).
-    public static void save(SystemData data) {
-        // Keep activeTasksCount in sync with the live TaskStore state
-        List<AcademicTask> tasks = TaskStore.getTasks();
-        long activeCount = tasks.stream()
-                .filter(t -> t.getStatus() == TaskStatus.PENDING)
-                .count();
-        data.setActiveTasksCount((int) activeCount);
+    // inject taskstore
+    public SystemStore(TaskStore taskStore) {
+        this.taskStore = taskStore;
+        loadSystemData();
+    }
+
+    public void saveSystemData() {
+        updateStatefulSystemData();
+        systemData.setLastSavedDate(LocalDate.now().format(DateTimeFormatter.ISO_DATE_TIME));
 
         try (DataOutputStream out = new DataOutputStream(new FileOutputStream(FILE_NAME))) {
-            out.writeLong(data.getLastTaskId());
-            out.writeUTF(data.getLastSavedDate());
-            out.writeInt(data.getActiveTasksCount());
-            out.writeUTF(data.getAcademicYear());
-            out.writeUTF(data.getApplicationVersion());
-            out.writeUTF(data.getApplicationPlatform());
-            out.writeUTF(data.getEnvironment());
+            out.writeLong(systemData.getLastTaskId());
+            out.writeUTF(systemData.getLastSavedDate());
+            out.writeInt(systemData.getActiveTasksCount());
+            out.writeUTF(systemData.getAcademicYear());
+            out.writeUTF(systemData.getApplicationVersion());
+            out.writeUTF(systemData.getApplicationPlatform());
+            out.writeUTF(systemData.getEnvironment());
         } catch (IOException e) {
             System.out.println("Error saving system data: " + e.getMessage());
         }
     }
 
+    private void updateStatefulSystemData() {
+        List<AcademicTask> tasks = taskStore.getTasks();
+        long activeCount = tasks.stream()
+                .filter(t -> t.getStatus() == TaskStatus.PENDING
+                        && t.getDueDate().toLocalDate().isEqual(LocalDate.now()))
+                .count();
+        if (!taskStore.getTasks().isEmpty()) {
+            systemData.setLastTaskId(tasks.getLast().getId());
+        }
+        systemData.setActiveTasksCount((int) activeCount);
+    }
+
     // Loads the SystemData object from system.dat.
     // If the file does not exist yet (first launch), returns default data instead.
-    public static SystemData load() {
+    public void loadSystemData() {
         File file = new File(FILE_NAME);
 
         if (!file.exists()) {
-            return createDefault();
+            var systemData = createDefault();
+            updateStatefulSystemData();
+            this.systemData = systemData;
         }
 
         try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
@@ -51,7 +69,7 @@ public class SystemStore {
             String applicationPlatform = in.readUTF();
             String environment = in.readUTF();
 
-            return new SystemData(
+            this.systemData = new SystemData(
                     lastTaskId,
                     lastSavedDate,
                     activeTasksCount,
@@ -62,7 +80,7 @@ public class SystemStore {
             );
         } catch (IOException e) {
             System.out.println("Error loading system data: " + e.getMessage());
-            return createDefault();
+            this.systemData = createDefault();
         }
     }
 
@@ -72,7 +90,7 @@ public class SystemStore {
                 0L,
                 "N/A",
                 0,
-                "2025-2026",
+                "2026-2027",
                 "1.0.0",
                 System.getProperty("os.name"),
                 "development"
