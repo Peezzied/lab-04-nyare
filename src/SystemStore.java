@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 public class SystemStore {
 
@@ -12,6 +13,13 @@ public class SystemStore {
     // Saves the current SystemData object into system.dat using binary streams.
     // Called on Manual Save (menu 4) and on Exit (menu 6).
     public static void save(SystemData data) {
+        // Keep activeTasksCount in sync with the live TaskStore state
+        List<AcademicTask> tasks = TaskStore.getTasks();
+        long activeCount = tasks.stream()
+                .filter(t -> t.getStatus() == TaskStatus.PENDING)
+                .count();
+        data.setActiveTasksCount((int) activeCount);
+
         try (DataOutputStream out = new DataOutputStream(new FileOutputStream(FILE_NAME))) {
             out.writeLong(data.getLastTaskId());
             out.writeUTF(data.getLastSavedDate());
