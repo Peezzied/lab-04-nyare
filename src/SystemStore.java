@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -25,7 +26,9 @@ public class SystemStore {
 
     public void saveSystemData() {
         updateStatefulSystemData();
-        systemData.setLastSavedDate(LocalDate.now().format(DateTimeFormatter.ISO_DATE_TIME));
+        String formattedDate = LocalDateTime.now()
+                .format(DateTimeFormatter.ofPattern("MMMM dd, yyyy hh:mm a"));
+        systemData.setLastSavedDate(formattedDate);
 
         try (DataOutputStream out = new DataOutputStream(new FileOutputStream(FILE_NAME))) {
             out.writeLong(systemData.getLastTaskId());
@@ -60,6 +63,7 @@ public class SystemStore {
         if (!file.exists()) {
             this.systemData = createDefault();
             updateStatefulSystemData();
+            saveSystemData();
         }
 
         try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
