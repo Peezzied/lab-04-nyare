@@ -1,6 +1,8 @@
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 
 public class Main {
 
@@ -179,9 +181,9 @@ public class Main {
                     if (lastRevealedIndex + 1 < currentList.size()) {
                         lastRevealedIndex++;
                         AcademicTask nextTask = currentList.get(lastRevealedIndex);
-                        System.out.println(formatTaskLine(nextTask));
+                        System.out.print(formatTaskLine(nextTask));
                     } else {
-                        // At end of list, automatically trigger search
+                        System.out.println("  " + COLOR_MUTED + "(END)\n" + COLOR_RESET);
                         triggerSearch = true;
                     }
                     break;
@@ -251,7 +253,11 @@ public class Main {
         int limit = Math.min(currentList.size(), 10);
         for (int i = 0; i < limit; i++) {
             AcademicTask t = currentList.get(i);
-            System.out.println(formatTaskLine(t));
+            if (i == limit - 1) {
+                System.out.print(formatTaskLine(t));
+            } else {
+                System.out.println(formatTaskLine(t));
+            }
         }
         return limit - 1;
     }
