@@ -1,4 +1,3 @@
-import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -31,34 +30,30 @@ public class Main {
     // Total width of the task table columns + blank separators (each separator is 3 spaces)
     private static final int TABLE_WIDTH = 1 + WIDTH_ID + 3 + WIDTH_SUBJ + 3 + WIDTH_TITLE + 3 + WIDTH_TYPE + 3 + WIDTH_DUE + 3 + WIDTH_STATUS;
 
-    // Local prototype data storage
-    private static final List<AcademicTask> tasks = new ArrayList<>();
-    private static SystemData systemData;
+    private static final TaskStore TASK_STORE = new TaskStore();
+    private static final SystemStore SYSTEM_STORE = new SystemStore(TASK_STORE);
 
     public static void main(String[] args) {
-        // Load data on startup
         loadData();
 
         Scanner scanner = new Scanner(System.in);
+        label:
         while (true) {
             printMainMenu();
             System.out.print(" " + COLOR_BOLD + COLOR_ACCENT + "> " + COLOR_RESET + "\u001B[97m"); // Bright white for input
             String choice = scanner.nextLine().trim();
             System.out.print(COLOR_RESET);
 
-            if (choice.equals("1")) {
-                displayTwoWeekTasks();
-            } else if (choice.equals("2")) {
-                generateStudyPlan();
-            } else if (choice.equals("3")) {
-                displayCurrentTasks();
-            } else if (choice.equals("4")) {
-                manualSave();
-            } else if (choice.equals("5")) {
-                showAbout();
-            } else if (choice.equals("6")) {
-                if (exitProgram()) {
-                    break;
+            switch (choice) {
+                case "1" -> displayTwoWeekTasks();
+                case "2" -> generateStudyPlan();
+                case "3" -> displayCurrentTasks();
+                case "4" -> manualSave();
+                case "5" -> showAbout();
+                case "6" -> {
+                    if (exitProgram()) {
+                        break label;
+                    }
                 }
             }
         }
@@ -74,11 +69,11 @@ public class Main {
 
     private static void printHeader(String title) {
         clearScreen();
-        System.out.println(" " + "\u2500".repeat(HEADER_WIDTH));
+        System.out.println(" " + "─".repeat(HEADER_WIDTH));
         int spaces = (HEADER_WIDTH - title.length()) / 2;
         String format = " %" + spaces + "s%s";
-        System.out.println(String.format(format, "", COLOR_BOLD + COLOR_ACCENT + title + COLOR_RESET));
-        System.out.println(" " + "\u2500".repeat(HEADER_WIDTH));
+        System.out.printf((format) + "%n", "", COLOR_BOLD + COLOR_ACCENT + title + COLOR_RESET);
+        System.out.println(" " + "─".repeat(HEADER_WIDTH));
     }
 
     private static void printMainMenu() {
@@ -95,7 +90,7 @@ public class Main {
         System.out.println("        |__/  \\__/    |__/   |__/  |__/|__/  |__/|________/ |__/\n");
         System.out.print(COLOR_RESET);
         System.out.println("                   " + COLOR_BOLD + "AI Class Journal & Study Planner" + COLOR_RESET);
-        System.out.println(" " + COLOR_MUTED + "\u2500".repeat(MENU_WIDTH) + COLOR_RESET);
+        System.out.println(" " + COLOR_MUTED + "─".repeat(MENU_WIDTH) + COLOR_RESET);
         System.out.println();
         System.out.println("        [" + COLOR_ACCENT + "1" + COLOR_RESET + "] \uD834\uDD1C Display 2-Week Tasks");
         System.out.println("        [" + COLOR_ACCENT + "2" + COLOR_RESET + "] ✦ Generate Study Plan from Notes");
@@ -104,7 +99,7 @@ public class Main {
         System.out.println("        [" + COLOR_ACCENT + "5" + COLOR_RESET + "] ⓘ About");
         System.out.println("        [" + COLOR_ACCENT + "6" + COLOR_RESET + "] ➜] Exit");
         System.out.println();
-        System.out.println(" " + COLOR_MUTED + "\u2500".repeat(MENU_WIDTH) + COLOR_RESET);
+        System.out.println(" " + COLOR_MUTED + "─".repeat(MENU_WIDTH) + COLOR_RESET);
     }
 
     private static void displayTwoWeekTasks() {
@@ -113,7 +108,7 @@ public class Main {
         LocalDateTime endOf14Days = LocalDateTime.now().toLocalDate().plusDays(14).atTime(23, 59, 59);
 
         List<AcademicTask> twoWeekTasks = new ArrayList<>();
-        for (AcademicTask t : tasks) {
+        for (AcademicTask t : TASK_STORE.getTasks()) {
             if (!t.getDueDate().isBefore(startOfToday) && !t.getDueDate().isAfter(endOf14Days)) {
                 twoWeekTasks.add(t);
             }
@@ -128,7 +123,7 @@ public class Main {
         LocalDateTime endOfToday = LocalDateTime.now().toLocalDate().atTime(23, 59, 59);
 
         List<AcademicTask> todayTasks = new ArrayList<>();
-        for (AcademicTask t : tasks) {
+        for (AcademicTask t : TASK_STORE.getTasks()) {
             if (!t.getDueDate().isBefore(startOfToday) && !t.getDueDate().isAfter(endOfToday)) {
                 todayTasks.add(t);
             }
@@ -150,25 +145,51 @@ public class Main {
         
         int lastRevealedIndex = printInitialTasks(currentList);
 
+        label:
         while (true) {
             String input = scanner.nextLine().trim().toLowerCase();
             
             boolean triggerSearch = false;
 
-            if (input.isEmpty()) {
-                // Reveal the next line only, appending it directly without redrawing
-                if (lastRevealedIndex + 1 < currentList.size()) {
-                    lastRevealedIndex++;
-                    AcademicTask nextTask = currentList.get(lastRevealedIndex);
-                    System.out.println(formatTaskLine(nextTask));
-                } else {
-                    // At end of list, automatically trigger search
-                    triggerSearch = true;
+            if (input.matches("\\d+")) {
+                long targetId = Long.parseLong(input);
+                AcademicTask found = null;
+                for (AcademicTask t : currentList) {
+                    if (t.getId() == targetId) {
+                        found = t;
+                        break;
+                    }
                 }
-            } else if (input.equals("q")) {
-                break;
-            } else if (input.equals("s")) {
-                triggerSearch = true;
+                if (found != null) {
+                    displayTaskDetailsCard(found);
+                    // Redraw the list exactly where the user left off
+                    printHeader(titleLabel);
+                    printInfoAndControls(filterQuery, currentList.size());
+                    printTableLabels();
+                    for (int i = 0; i <= lastRevealedIndex; i++) {
+                        System.out.println(formatTaskLine(currentList.get(i)));
+                    }
+                    continue;
+                }
+            }
+
+            switch (input) {
+                case "":
+                    // Reveal the next line only, appending it directly without redrawing
+                    if (lastRevealedIndex + 1 < currentList.size()) {
+                        lastRevealedIndex++;
+                        AcademicTask nextTask = currentList.get(lastRevealedIndex);
+                        System.out.println(formatTaskLine(nextTask));
+                    } else {
+                        // At end of list, automatically trigger search
+                        triggerSearch = true;
+                    }
+                    break;
+                case "q":
+                    break label;
+                case "s":
+                    triggerSearch = true;
+                    break;
             }
 
             if (triggerSearch) {
@@ -208,7 +229,7 @@ public class Main {
         if (!filterQuery.equals("None")) {
             info += " (Filter: " + filterQuery + ")";
         }
-        info += " \u00B7 showing " + showingStart + "-" + showingEnd + " \u00B7 \u21B5 for more, " + COLOR_BOLD + "s" + COLOR_RESET + " to search, " + COLOR_BOLD + "q" + COLOR_RESET + " to stop";
+        info += " · showing " + showingStart + "-" + showingEnd + " · " + COLOR_BOLD + "[ID]" + COLOR_RESET + " for notes, ↵ for more, " + COLOR_BOLD + "s" + COLOR_RESET + " to search, " + COLOR_BOLD + "q" + COLOR_RESET + " to stop";
         
         System.out.println("  " + info);
         System.out.println();
@@ -218,7 +239,7 @@ public class Main {
         String format = "  %-" + WIDTH_ID + "s   %-" + WIDTH_SUBJ + "s   %-" + WIDTH_TITLE + "s   %-" + WIDTH_TYPE + "s   %-" + WIDTH_DUE + "s   %-" + WIDTH_STATUS + "s";
         String labelLine = String.format(format, "ID", "SUBJECT", "TITLE", "TYPE", "DUE DATE", "STATUS");
         System.out.println(COLOR_BOLD + labelLine + COLOR_RESET);
-        System.out.println(" " + COLOR_MUTED + "\u2500".repeat(TABLE_WIDTH) + COLOR_RESET);
+        System.out.println(" " + COLOR_MUTED + "─".repeat(TABLE_WIDTH) + COLOR_RESET);
     }
 
     private static int printInitialTasks(List<AcademicTask> currentList) {
@@ -238,15 +259,16 @@ public class Main {
     private static String formatTaskLine(AcademicTask t) {
         String idStr = String.format("%0" + WIDTH_ID + "d", t.getId());
         String subj = padRight(t.getSubjectCode(), WIDTH_SUBJ);
-        String title = padRight(truncate(t.getTitle(), WIDTH_TITLE), WIDTH_TITLE);
+        String title = padRight(truncate(t.getTitle()), WIDTH_TITLE);
         
         String typeColor = COLOR_RESET;
-        switch (t.getType()) {
-            case ACTIVITY: typeColor = COLOR_CYAN; break;
-            case PROJECT: typeColor = COLOR_MAGENTA; break;
-            case ASSIGNMENT: typeColor = COLOR_BLUE; break;
-            case EXAM: typeColor = COLOR_RED; break;
-        }
+        typeColor = switch (t.getType()) {
+            case ACTIVITY -> COLOR_CYAN;
+            case PROJECT -> COLOR_MAGENTA;
+            case ASSIGNMENT -> COLOR_BLUE;
+            case EXAM -> COLOR_RED;
+            default -> typeColor;
+        };
         String typeStr = typeColor + padRight(t.getType().name(), WIDTH_TYPE) + COLOR_RESET;
 
         // Format Due Date
@@ -261,14 +283,16 @@ public class Main {
 
     private static void generateStudyPlan() {
         printHeader("GENERATE STUDY PLAN FROM NOTES");
-        System.out.println("  Generating AI Study Plan...");
+        System.out.println("  Generating Study Plan...");
 
         // Count tasks with notes due today or in the next 14 days
         LocalDateTime startOfToday = LocalDateTime.now().toLocalDate().atStartOfDay();
         LocalDateTime endOf14Days = LocalDateTime.now().toLocalDate().plusDays(14).atTime(23, 59, 59);
 
+        populateTasks();
+
         int taskCount = 0;
-        for (AcademicTask t : tasks) {
+        for (AcademicTask t : TASK_STORE.getTasks()) {
             if (!t.getDueDate().isBefore(startOfToday) && !t.getDueDate().isAfter(endOf14Days)) {
                 if (t.getNotes() != null && !t.getNotes().trim().isEmpty()) {
                     taskCount++;
@@ -277,11 +301,11 @@ public class Main {
         }
 
         System.out.println();
-        System.out.println(" " + COLOR_GREEN + " [✔] Loaded today's notes (" + taskCount + " detected tasks)" + COLOR_RESET);
+        System.out.println(" " + COLOR_GREEN + " [✔] Loaded today's notes (" + taskCount + " extracted tasks using AI)" + COLOR_RESET);
         System.out.println(" " + COLOR_GREEN + " [✔] Synthesized into a two week study plan!" + COLOR_RESET);
         System.out.println();
         System.out.println("  SUCCESS: Study Plan generated and loaded in background.");
-        System.out.println(" " + COLOR_MUTED + "\u2500".repeat(HEADER_WIDTH) + COLOR_RESET);
+        System.out.println(" " + COLOR_MUTED + "─".repeat(HEADER_WIDTH) + COLOR_RESET);
         
         System.out.print(" " + COLOR_BOLD + COLOR_ACCENT + "> Press [Enter] to redirect to Display 2-Week Tasks: " + COLOR_RESET + "\u001B[97m");
         Scanner scanner = new Scanner(System.in);
@@ -292,6 +316,10 @@ public class Main {
         displayTwoWeekTasks();
     }
 
+    private static void populateTasks() {
+        
+    }
+
     private static void manualSave() {
         printHeader("MANUAL SAVE");
         System.out.println("  Saving system configuration...");
@@ -300,7 +328,7 @@ public class Main {
         // Recalculate SystemData stats before saving
         long maxId = 0;
         int activeCount = 0;
-        for (AcademicTask t : tasks) {
+        for (AcademicTask t : TASK_STORE.getTasks()) {
             if (t.getId() > maxId) {
                 maxId = t.getId();
             }
@@ -308,19 +336,20 @@ public class Main {
                 activeCount++;
             }
         }
+        var systemData = SYSTEM_STORE.getSystemData();
         systemData.setLastTaskId(maxId);
         systemData.setActiveTasksCount(activeCount);
 
         String nowStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         systemData.setLastSavedDate(nowStr);
 
-        System.out.println(" " + COLOR_GREEN + "  [\u2714] Updating system state in memory" + COLOR_RESET);
-        System.out.println(" " + COLOR_GREEN + "  [\u2714] Academic tasks list synced locally" + COLOR_RESET);
+        System.out.println(" " + COLOR_GREEN + "  [✔] Updating system state in memory" + COLOR_RESET);
+        System.out.println(" " + COLOR_GREEN + "  [✔] Academic tasks list synced locally" + COLOR_RESET);
         System.out.println(" " + COLOR_MUTED + "      (File persistence disabled - handled by backend team)" + COLOR_RESET);
 
         System.out.println();
         System.out.println("  SUCCESS: Data saved successfully!");
-        System.out.println(" " + COLOR_MUTED + "\u2500".repeat(HEADER_WIDTH) + COLOR_RESET);
+        System.out.println(" " + COLOR_MUTED + "─".repeat(HEADER_WIDTH) + COLOR_RESET);
         
         System.out.print(" " + COLOR_BOLD + COLOR_ACCENT + "> Press [Enter] to return to Main Menu: " + COLOR_RESET + "\u001B[97m");
         Scanner scanner = new Scanner(System.in);
@@ -329,6 +358,7 @@ public class Main {
     }
 
     private static void showAbout() {
+        var systemData = SYSTEM_STORE.getSystemData();
         printHeader("ABOUT");
         System.out.println("   'NYARE - AI Class Journal & Study Planner");
         System.out.println();
@@ -346,7 +376,7 @@ public class Main {
             lastSaved = "Never";
         }
         System.out.println("   - Last Saved Date:    " + COLOR_ACCENT + lastSaved + COLOR_RESET);
-        System.out.println(" " + COLOR_MUTED + "\u2500".repeat(HEADER_WIDTH) + COLOR_RESET);
+        System.out.println(" " + COLOR_MUTED + "─".repeat(HEADER_WIDTH) + COLOR_RESET);
         
         System.out.print(" " + COLOR_BOLD + COLOR_ACCENT + "> Press [Enter] to return to Main Menu: " + COLOR_RESET + "\u001B[97m");
         Scanner scanner = new Scanner(System.in);
@@ -364,7 +394,7 @@ public class Main {
             System.out.println();
             System.out.println("  Thank you for using 'NYARE! Keeping you organized and on track.");
             System.out.println("  Goodbye!");
-            System.out.println(" " + COLOR_MUTED + "\u2500".repeat(HEADER_WIDTH) + COLOR_RESET);
+            System.out.println(" " + COLOR_MUTED + "─".repeat(HEADER_WIDTH) + COLOR_RESET);
             return true;
         }
         return false;
@@ -380,33 +410,60 @@ public class Main {
     }
 
     // Helper: Truncate with ellipsis
-    private static String truncate(String s, int n) {
+    private static String truncate(String s) {
         if (s == null) return "";
-        if (s.length() > n) {
-            return s.substring(0, n - 3) + "...";
+        if (s.length() > Main.WIDTH_TITLE) {
+            return s.substring(0, Main.WIDTH_TITLE - 3) + "...";
         }
         return s;
     }
 
-    private static void loadData() {
-        // Persistence temporarily disabled - handled by other developers
-        systemData = new SystemData(
-            0,
-            "Never",
-            0,
-            "2026-2027",
-            "1.0.0-poc",
-            "Java Console (SE)",
-            "Development"
-        );
-
-        // Seed with dummy tasks for the in-memory prototype
-        seedTasks();
+    private static void displayTaskDetailsCard(AcademicTask t) {
+        clearScreen();
+        printHeader("TASK DETAILS");
+        System.out.println("   ID:          " + t.getId());
+        System.out.println("   Subject:     " + t.getSubjectCode() + " (ID: " + t.getSubjectId() + ")");
+        System.out.println("   Type:        " + t.getType());
+        System.out.println("   Due Date:    " + t.getDueDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        System.out.println("   Status:      " + t.getStatus());
+        System.out.println();
+        System.out.println("   Notes:");
         
+        // Wrap the notes block to 70 characters so it fits neatly
+        printWrappedText(t.getNotes());
+        
+        System.out.println(" " + "─".repeat(HEADER_WIDTH));
+        System.out.print(" " + COLOR_BOLD + COLOR_ACCENT + "> Press [Enter] to return to list: " + COLOR_RESET + "\u001B[97m");
+        new Scanner(System.in).nextLine();
+        System.out.print(COLOR_RESET);
+    }
+   
+    private static void printWrappedText(String text) {
+        if (text == null || text.isEmpty()) {
+            System.out.println("   " + "(None)");
+            return;
+        }
+        String[] words = text.split(" ");
+        StringBuilder line = new StringBuilder("   ");
+        for (String word : words) {
+            if (line.length() + word.length() - "   ".length() > 70) {
+                System.out.println(line.toString());
+                line = new StringBuilder("   ").append(word).append(" ");
+            } else {
+                line.append(word).append(" ");
+            }
+        }
+        System.out.println(line.toString().stripTrailing());
+    }
+
+    private static void loadData() {
+        TASK_STORE.loadTasks();
+        SYSTEM_STORE.loadSystemData();
+
         // Perform stats recalculation
         long maxId = 0;
         int activeCount = 0;
-        for (AcademicTask t : tasks) {
+        for (AcademicTask t : TASK_STORE.getTasks()) {
             if (t.getId() > maxId) {
                 maxId = t.getId();
             }
@@ -414,48 +471,5 @@ public class Main {
                 activeCount++;
             }
         }
-        systemData.setLastTaskId(maxId);
-        systemData.setActiveTasksCount(activeCount);
-    }
-
-    private static void seedTasks() {
-        LocalDateTime now = LocalDateTime.now();
-//
-//        // Task 1: Due today (for Today's Tasks display)
-//        tasks.add(new AcademicTask(
-//            1, 101, "CCS201", "Setup Git Repository",
-//            "Initialize local git repository, configure gitignore, and commit the initial structure.",
-//            TaskType.ACTIVITY, now.plusHours(2), TaskStatus.PENDING
-//        ));
-//
-//        // Task 2: Due in 4 days (for 2-Week Tasks display)
-//        tasks.add(new AcademicTask(
-//            2, 101, "CCS201", "Console UI Prototype",
-//            "Implement the console interface, including menu navigation, viewport scrolling, search, and ANSI colors.",
-//            TaskType.PROJECT, now.plusDays(4), TaskStatus.PENDING
-//        ));
-//
-//        // Task 3: Due in 9 days (for 2-Week Tasks display)
-//        tasks.add(new AcademicTask(
-//            3, 102, "MATH102", "Calculus Homework 3",
-//            "Complete exercise set 3.2 on pages 120-125 of the textbook. Show all derivation steps clearly.",
-//            TaskType.ASSIGNMENT, now.plusDays(9), TaskStatus.PENDING
-//        ));
-//
-//        // Task 4: Due in 18 days (Excluded from 2-Week Tasks)
-//        tasks.add(new AcademicTask(
-//            4, 103, "COMP302", "Final Exam Review",
-//            "Comprehensive study of graph algorithms, minimum spanning trees, and dynamic programming.",
-//            TaskType.EXAM, now.plusDays(18), TaskStatus.PENDING
-//        ));
-//
-//        // Additional dummy tasks to showcase viewport scrolling (total tasks > 10)
-//        for (int i = 1; i <= 8; i++) {
-//            tasks.add(new AcademicTask(
-//                4 + i, 101, "GEN10" + i, "General Lecture Task " + i,
-//                "This is dummy task " + i + " to demonstrate list scrolling behavior.",
-//                TaskType.ACTIVITY, now.plusDays(1 + i), TaskStatus.PENDING
-//            ));
-//        }
     }
 }
